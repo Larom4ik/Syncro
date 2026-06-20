@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/shared/Header";
 import { Button } from "@/components/shared/Button";
@@ -49,30 +49,33 @@ export function CatalogPage() {
   });
 
   const loadCatalog = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const [discover, genreList] = await Promise.all([
-        searchQuery.trim()
-          ? api.search(searchQuery)
-          : api.discover({
-              genre: selectedGenre || undefined,
-              year: year || undefined,
-              sortBy,
-            }),
-        genres.length ? Promise.resolve(genres) : api.genres(),
-      ]);
-      setMovies(discover.results);
-      if (!genres.length) setGenres(genreList as { id: number; name: string }[]);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setLoading(false);
+  setLoading(true);
+  setError("");
+  try {
+    const discover = await (searchQuery.trim()
+      ? api.search(searchQuery)
+      : api.discover({
+          genre: selectedGenre || undefined,
+          year: year || undefined,
+          sortBy,
+        }));
+
+    setMovies(discover.results);
+
+    if (!genres.length && !searchQuery) {
+      const allGenres = discover.results.flatMap((m) => m.genres ?? []);
+      const unique = [...new Set(allGenres)];
+      setGenres(unique.map((g, i) => ({ id: i, name: g })));
     }
-  }, [searchQuery, selectedGenre, year, sortBy, genres.length]);
+  } catch (err) {
+    setError((err as Error).message);
+  } finally {
+    setLoading(false);
+  }
+}, [searchQuery, selectedGenre, year, sortBy, genres.length]);
 
   useEffect(() => {
-    if (isLoggedIn) loadCatalog();
+    if (isLoggedIn) startTransition(() => { loadCatalog(); });
   }, [isLoggedIn, loadCatalog]);
 
   const heroMovie = movies[0];
@@ -92,7 +95,6 @@ export function CatalogPage() {
       magnet,
       meta: {
         mode: solo ? "solo" : "torrent",
-        tmdbId: details.id,
         title: details.title,
         posterPath: details.poster,
       },
@@ -175,12 +177,6 @@ export function CatalogPage() {
             {error && (
               <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-sm">
                 {error}
-                {!error.includes("TMDB") && null}
-                {error.includes("TMDB") && (
-                  <p className="mt-2 text-xs text-zinc-400">
-                    Добавьте TMDB_API_KEY в backend/.env
-                  </p>
-                )}
               </div>
             )}
 

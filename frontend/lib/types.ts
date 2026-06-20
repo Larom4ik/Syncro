@@ -20,21 +20,29 @@ export interface UserIdentity {
   createdAt: string;
 }
 
+// ✅ Обновили под данные от нашего парсера
 export interface MovieSummary {
-  id: number;
+  id: string;
   title: string;
-  overview: string;
+  titleEn: string;
+  description: string;
   poster: string;
-  backdrop: string;
   year: number;
-  rating: number;
-  popularity: number;
-  genreIds: number[];
+  rating: string | null;
+  genres: string[];
+  magnet: string;
+  size: string;
+  kinopoiskId: number | null;
+  // оставляем для совместимости со старым кодом
+  overview?: string;
+  backdrop?: string;
+  popularity?: number;
+  genreIds?: number[];
 }
 
+// ✅ MovieDetails теперь тоже базируется на MovieSummary
 export interface MovieDetails extends MovieSummary {
   runtime: number | null;
-  genres: string[];
   country: string;
   duration: string;
 }
@@ -45,7 +53,7 @@ export interface TorrentOption {
   seeders: number;
   size: string;
   quality: string;
-  provider: '1337x' | 'rutracker';
+  provider: '1337x' | 'rutracker' | 'rutorg' | 'fasttorrent';
   score: number;
 }
 

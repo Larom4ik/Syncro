@@ -23,7 +23,7 @@ export function MovieGrid({
       {movies.map((movie) => (
         <div key={movie.id} className="relative">
           <div className="absolute top-2 left-2 z-10 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-black/70 backdrop-blur-sm text-[var(--syncro-accent)] border border-[var(--syncro-accent)]/20">
-            {movie.rating.toFixed(1)}
+            {movie.rating ?? "—"}
           </div>
           <MovieCard movie={movie} onClick={() => onSelect(movie)} />
         </div>

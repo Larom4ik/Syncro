@@ -24,9 +24,9 @@ export function FilterBar({
   onSearchChange,
 }: FilterBarProps) {
   const sortOptions = [
-    { value: "popularity.desc", label: "Популярность" },
-    { value: "vote_average.desc", label: "Рейтинг" },
-    { value: "primary_release_date.desc", label: "Новинки" },
+    { value: "NUM_VOTE", label: "Популярность" },
+    { value: "RATING", label: "Рейтинг" },
+    { value: "YEAR", label: "Новинки" },
   ];
 
   const years = Array.from({ length: 30 }, (_, i) => String(new Date().getFullYear() - i));
@@ -84,9 +84,9 @@ export function FilterBar({
         {genres.map((g) => (
           <button
             key={g.id}
-            onClick={() => onGenreChange(String(g.id))}
+            onClick={() => onGenreChange(g.name)}
             className={`px-4 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-              selectedGenre === String(g.id)
+              selectedGenre === g.name
                 ? "bg-[var(--syncro-accent)] text-black"
                 : "bg-white/5 text-zinc-400 hover:text-zinc-200 border border-white/10"
             }`}

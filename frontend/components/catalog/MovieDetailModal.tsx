@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, startTransition } from "react";
 import Image from "next/image";
 import { Button } from "@/components/shared/Button";
 import { Modal } from "@/components/shared/Modal";
@@ -20,8 +20,8 @@ export function MovieDetailModal({
   onWatchSolo,
   onWatchTogether,
 }: MovieDetailModalProps) {
-  const [details, setDetails] = useState<MovieDetails | null>(null);
   const [torrents, setTorrents] = useState<TorrentOption[]>([]);
+  const [details, setDetails] = useState<MovieDetails | null>(null);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [loading, setLoading] = useState(false);
   const [torrentError, setTorrentError] = useState("");
@@ -29,9 +29,15 @@ export function MovieDetailModal({
   useEffect(() => {
     if (!movie) return;
 
-    setLoading(true);
-    setTorrentError("");
+    startTransition(() => {
+      setLoading(true);
+      setTorrentError("");
+      setTorrents([]);
+      setDetails(null);
+      setSelectedIdx(0);
+    });
 
+    // Загружаем детали фильма и торренты параллельно
     Promise.all([
       api.movie(movie.id),
       api.torrents(movie.title, movie.year).catch(() => ({ results: [], recommendedId: 0 })),
@@ -44,13 +50,17 @@ export function MovieDetailModal({
           setTorrentError("Источники не найдены. Попробуйте позже или Custom Stream.");
         }
       })
-      .catch((err) => setTorrentError((err as Error).message))
+      .catch(() => {
+        setTorrentError("Ошибка загрузки данных.");
+      })
       .finally(() => setLoading(false));
   }, [movie]);
 
   if (!movie) return null;
 
   const selected = torrents[selectedIdx];
+  // Используем загруженные детали, если они есть, иначе fallback на данные из списка
+  const movieData = (details || movie) as MovieDetails;
 
   return (
     <Modal open={!!movie} onClose={onClose} title={movie.title}>
@@ -63,25 +73,33 @@ export function MovieDetailModal({
           </div>
           <div className="space-y-3 flex-1">
             <h3 className="text-2xl font-black">{movie.title}</h3>
-            {details && (
-              <div className="text-xs text-zinc-400 space-y-1">
-                <p>
-                  <span className="text-[var(--syncro-accent)] font-bold">★ {details.rating.toFixed(1)}</span>
-                  {" · "}{details.year}{details.country && ` · ${details.country}`}
-                  {details.duration && ` · ${details.duration}`}
-                </p>
-                {details.genres?.length > 0 && (
-                  <div className="flex flex-wrap gap-1 pt-1">
-                    {details.genres.map((g) => (
-                      <span key={g} className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-[10px]">
-                        {g}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                <p className="pt-2 leading-relaxed">{details.overview}</p>
-              </div>
+            {movie.titleEn && (
+              <p className="text-sm text-zinc-500">{movie.titleEn}</p>
             )}
+            <div className="text-xs text-zinc-400 space-y-1">
+              <p>
+                {movie.rating && (
+                  <span className="text-[var(--syncro-accent)] font-bold">★ {movie.rating}</span>
+                )}
+                {movie.rating && movie.year ? " · " : ""}
+                {movie.year > 0 ? movie.year : ""}
+              </p>
+              {movie.genres?.length > 0 && (
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {movie.genres.map((g) => (
+                    <span key={g} className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-[10px]">
+                      {g}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {movie.description && (
+                <p className="pt-2 leading-relaxed">{movie.description}</p>
+              )}
+              {movie.size && (
+                <p className="text-zinc-600 pt-1">Размер: {movie.size}</p>
+              )}
+            </div>
           </div>
         </div>
 
@@ -125,13 +143,13 @@ export function MovieDetailModal({
           <Button
             variant="secondary"
             disabled={!selected || loading}
-            onClick={() => details && selected && onWatchSolo(selected.magnet, details)}
+            onClick={() => selected && onWatchSolo(selected.magnet, movieData)}
           >
             Смотреть одному
           </Button>
           <Button
             disabled={!selected || loading}
-            onClick={() => details && selected && onWatchTogether(selected.magnet, details)}
+            onClick={() => selected && onWatchTogether(selected.magnet, movieData)}
           >
             Смотреть с кем-то
           </Button>

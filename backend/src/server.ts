@@ -6,6 +6,7 @@ import { env } from './config/env.js';
 import { tmdbRouter } from './routes/tmdb.js';
 import { torrentsRouter } from './routes/torrents.js';
 import { registerSocketHandlers } from './sockets/index.js';
+import { catalogRouter } from './routes/catalog.js';
 
 const app = express();
 app.use(cors({ origin: env.corsOrigin === '*' ? '*' : env.corsOrigin }));
@@ -16,6 +17,7 @@ app.get('/ping', (_req, res) => {
 });
 app.use('/api/tmdb', tmdbRouter);
 app.use('/api/torrents', torrentsRouter);
+app.use('/api/catalog', catalogRouter);
 
 const server = createServer(app);
 

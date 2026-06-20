@@ -7,7 +7,7 @@ export interface TorrentResult {
   seeders: number;
   size: string;
   quality: string;
-  provider: '1337x' | 'rutracker';
+  provider: '1337x' | 'rutracker' | 'rutorg' | 'fasttorrent';
   score: number;
 }
 
@@ -15,8 +15,7 @@ const cache = new Map<string, { data: TorrentResult[]; expires: number }>();
 const CACHE_TTL = 5 * 60 * 1000;
 
 const HEADERS = {
-  'User-Agent':
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   Accept: 'text/html,application/xhtml+xml',
   'Accept-Language': 'ru-RU,ru;q=0.9,en;q=0.8',
 };
@@ -46,6 +45,7 @@ export function scoreTorrent(r: Omit<TorrentResult, 'score'>): number {
   return score;
 }
 
+// ── 1337x ──────────────────────────────────────────────────────────────────
 async function search1337x(query: string): Promise<TorrentResult[]> {
   const results: TorrentResult[] = [];
   try {
@@ -55,81 +55,114 @@ async function search1337x(query: string): Promise<TorrentResult[]> {
 
     const links: string[] = [];
     $('table.table-list tbody tr').each((_, el) => {
-      const href = $(el).find('a').attr('href');
+      const href = $(el).find('a').eq(1).attr('href');
       if (href && href.includes('/torrent/')) links.push(href);
     });
 
-    const uniqueLinks = [...new Set(links)].slice(0, 8);
-
-    for (const link of uniqueLinks) {
+    for (const link of [...new Set(links)].slice(0, 6)) {
       try {
         const detailUrl = link.startsWith('http') ? link : `https://1337x.to${link}`;
         const { data: detailHtml } = await axios.get(detailUrl, { headers: HEADERS, timeout: 10000 });
         const $$ = cheerio.load(detailHtml);
-        const title = $$('div.box-info div ul li').first().find('span').text().trim() || $$('h1').text().trim();
-        const magnet = $$('a[href^="magnet:"]').attr('href') || '';
-        const seedersText = $$('span.seeds').text().trim();
-        const seeders = parseInt(seedersText, 10) || 0;
-        const size = $$('div.box-info div ul li').eq(4).find('span').text().trim() || '';
+        const title = $$('h1').text().trim();
+        const magnet = $$('a[href^="magnet:"]').attr('href') ?? '';
+        const seeders = parseInt($$('span.seeds').text().trim(), 10) || 0;
+        const size = $$('div.box-info ul li').eq(4).find('span').text().trim();
 
         if (!magnet) continue;
-
         const quality = detectQuality(title);
         const base = { title, magnet, seeders, size, quality, provider: '1337x' as const };
         results.push({ ...base, score: scoreTorrent(base) });
-      } catch {
-        /* skip broken detail page */
-      }
+      } catch { /* skip */ }
     }
   } catch (err) {
-    console.warn('[1337x] search failed:', (err as Error).message);
+    console.warn('[1337x] failed:', (err as Error).message);
   }
   return results;
 }
 
-async function searchRutracker(query: string): Promise<TorrentResult[]> {
+// ── Rutorg.info ────────────────────────────────────────────────────────────
+async function searchRutorg(query: string): Promise<TorrentResult[]> {
   const results: TorrentResult[] = [];
   try {
-    const searchUrl = `https://rutracker.net/forum/tracker.php?nm=${encodeURIComponent(query)}`;
+    const searchUrl = `https://rutorg.info/index.php?do=search&subaction=search&story=${encodeURIComponent(query)}`;
     const { data: html } = await axios.get(searchUrl, { headers: HEADERS, timeout: 12000 });
     const $ = cheerio.load(html);
 
-    $('table.forumlines tbody tr').each((_, el) => {
-      const titleLink = $(el).find('a.tLink');
-      const title = titleLink.text().trim();
-      const href = titleLink.attr('href');
-      const seedersText = $(el).find('td.seedmed').text().trim();
-      const seeders = parseInt(seedersText, 10) || 0;
-      const size = $(el).find('td').eq(5).text().trim();
-
-      if (!title || !href) return;
-
-      const topicId = href.match(/t=(\d+)/)?.[1];
-      if (!topicId) return;
-
-      const magnet = `magnet:?xt=urn:btih:${topicId}&dn=${encodeURIComponent(title)}`;
-      const quality = detectQuality(title);
-      const base = { title, magnet, seeders, size, quality, provider: 'rutracker' as const };
-      results.push({ ...base, score: scoreTorrent(base) });
+    const links: string[] = [];
+    $('div.short-story h2 a, div.title a, .mov-title a').each((_, el) => {
+      const href = $(el).attr('href');
+      if (href) links.push(href);
     });
+
+    for (const link of links.slice(0, 6)) {
+      try {
+        const { data: detailHtml } = await axios.get(link, { headers: HEADERS, timeout: 10000 });
+        const $$ = cheerio.load(detailHtml);
+        const title = $$('h1').first().text().trim();
+        const magnet = $$('a[href^="magnet:"]').first().attr('href') ?? '';
+        if (!magnet) continue;
+
+        const quality = detectQuality(title);
+        const base = { title, magnet, seeders: 0, size: '', quality, provider: 'rutorg' as const };
+        results.push({ ...base, score: scoreTorrent(base) });
+      } catch { /* skip */ }
+    }
   } catch (err) {
-    console.warn('[Rutracker] search failed:', (err as Error).message);
+    console.warn('[Rutorg] failed:', (err as Error).message);
   }
-  return results.slice(0, 15);
+  return results;
 }
 
+// ── Fast-Torrent.ru ────────────────────────────────────────────────────────
+async function searchFastTorrent(query: string): Promise<TorrentResult[]> {
+  const results: TorrentResult[] = [];
+  try {
+    const searchUrl = `https://fast-torrent.ru/search/?q=${encodeURIComponent(query)}`;
+    const { data: html } = await axios.get(searchUrl, { headers: HEADERS, timeout: 12000 });
+    const $ = cheerio.load(html);
+
+    const links: string[] = [];
+    $('div.torrent-title a, .film-name a, h2.title a').each((_, el) => {
+      const href = $(el).attr('href');
+      if (href) links.push(href.startsWith('http') ? href : `https://fast-torrent.ru${href}`);
+    });
+
+    for (const link of links.slice(0, 6)) {
+      try {
+        const { data: detailHtml } = await axios.get(link, { headers: HEADERS, timeout: 10000 });
+        const $$ = cheerio.load(detailHtml);
+        const title = $$('h1').first().text().trim();
+        const magnet = $$('a[href^="magnet:"]').first().attr('href') ?? '';
+        if (!magnet) continue;
+
+        const sizeText = $$('*:contains("Размер")').next().text().trim() || '';
+        const quality = detectQuality(title);
+        const base = { title, magnet, seeders: 0, size: sizeText, quality, provider: 'fasttorrent' as const };
+        results.push({ ...base, score: scoreTorrent(base) });
+      } catch { /* skip */ }
+    }
+  } catch (err) {
+    console.warn('[FastTorrent] failed:', (err as Error).message);
+  }
+  return results;
+}
+
+// ── Главная функция ────────────────────────────────────────────────────────
 export async function searchTorrents(title: string, year?: number): Promise<TorrentResult[]> {
   const query = year ? `${title} ${year}` : title;
   const cacheKey = query.toLowerCase();
   const hit = cache.get(cacheKey);
   if (hit && hit.expires > Date.now()) return hit.data;
 
-  const [from1337x, fromRutracker] = await Promise.all([
+  // Запускаем все три параллельно — кто ответит, тот и даёт результат
+  const [from1337x, fromRutorg, fromFastTorrent] = await Promise.all([
     search1337x(query),
-    searchRutracker(query),
+    searchRutorg(query),
+    searchFastTorrent(query),
   ]);
 
-  const merged = [...from1337x, ...fromRutracker]
+  const merged = [...from1337x, ...fromRutorg, ...fromFastTorrent]
     .sort((a, b) => b.score - a.score)
     .slice(0, 20);
 
@@ -139,5 +172,5 @@ export async function searchTorrents(title: string, year?: number): Promise<Torr
 
 export function pickBestTorrent(results: TorrentResult[]): TorrentResult | null {
   if (results.length === 0) return null;
-  return [...results].sort((a, b) => b.score - a.score)[0] ?? null;
+  return [...results].sort((a, b) => b.score - a.score).at(0) ?? null;
 }

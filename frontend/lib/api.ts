@@ -11,23 +11,22 @@ async function get<T>(path: string): Promise<T> {
 }
 
 export const api = {
-  discover: (params: { page?: number; genre?: string; year?: string; sortBy?: string }) => {
+  discover: (params?: { genre?: string; year?: string; sortBy?: string; page?: number }) => {
     const q = new URLSearchParams();
-    if (params.page) q.set('page', String(params.page));
-    if (params.genre) q.set('genre', params.genre);
-    if (params.year) q.set('year', params.year);
-    if (params.sortBy) q.set('sortBy', params.sortBy);
-    return get<{ results: MovieSummary[]; page: number; totalPages: number }>(
-      `/api/tmdb/discover?${q}`
-    );
+    if (params?.genre) q.set('genre', params.genre);
+    if (params?.year) q.set('year', params.year);
+    if (params?.sortBy) q.set('sortBy', params.sortBy);
+    if (params?.page) q.set('page', String(params.page));
+    const qs = q.toString();
+    return get<{ results: MovieSummary[] }>(`/api/catalog/discover${qs ? `?${qs}` : ''}`);
   },
 
   search: (q: string) =>
-    get<{ results: MovieSummary[] }>(`/api/tmdb/search?q=${encodeURIComponent(q)}`),
+    get<{ results: MovieSummary[] }>(`/api/catalog/search?q=${encodeURIComponent(q)}`),
 
-  movie: (id: number) => get<MovieDetails>(`/api/tmdb/movie/${id}`),
+  movie: (id: string) => get<MovieDetails>(`/api/catalog/movie/${id}`),
 
-  genres: () => get<{ id: number; name: string }[]>('/api/tmdb/genres'),
+  genres: () => get<{ id: number; name: string }[]>('/api/catalog/genres'),
 
   torrents: (title: string, year?: number) => {
     const q = new URLSearchParams({ title });

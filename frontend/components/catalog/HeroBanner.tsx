@@ -13,9 +13,9 @@ export function HeroBanner({
 }) {
   return (
     <div className="relative w-full h-[380px] rounded-3xl overflow-hidden border border-white/5 shadow-2xl group">
-      {movie.backdrop && (
+      {movie.poster && (
         <Image
-          src={movie.backdrop}
+          src={movie.poster}
           alt={movie.title}
           fill
           unoptimized
@@ -28,11 +28,22 @@ export function HeroBanner({
           <span className="px-2 py-0.5 bg-[var(--syncro-accent)] text-black font-black rounded">
             ТРЕНД
           </span>
-          <span className="text-[var(--syncro-accent)] font-bold">★ {movie.rating.toFixed(1)}</span>
+          {movie.rating && (
+            <span className="text-[var(--syncro-accent)] font-bold">★ {movie.rating}</span>
+          )}
           <span className="text-zinc-400">{movie.year}</span>
         </div>
         <h2 className="text-3xl md:text-5xl font-black tracking-tight">{movie.title}</h2>
-        <p className="text-sm text-zinc-300 line-clamp-2">{movie.overview}</p>
+        {movie.description && (
+          <p className="text-sm text-zinc-300 line-clamp-2">{movie.description}</p>
+        )}
+        {movie.genres?.length > 0 && (
+          <div className="flex gap-2 flex-wrap">
+            {movie.genres.slice(0, 3).map((g) => (
+              <span key={g} className="px-2 py-0.5 bg-white/10 rounded text-[11px] text-zinc-300">{g}</span>
+            ))}
+          </div>
+        )}
         <Button onClick={onSelect}>Выбрать для просмотра</Button>
       </div>
     </div>
