@@ -115,6 +115,13 @@ function joinRoomInternal(
     hostUserId: room.hostUserId,
   });
 
+  // Notify other users in the room about the new joiner (for bootstrap sync)
+  socket.to(roomId).emit('user_joined', {
+    userId,
+    nickname,
+    socketId: socket.id,
+  });
+
   emitRoomUsers(io, roomId);
 
   if (!roomId.startsWith('solo-')) {

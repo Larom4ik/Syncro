@@ -10,9 +10,10 @@ interface UseRoomOptions {
   socket: Socket | null;
   onJoinOk?: (data: { roomId: string; meta: RoomMeta; isHost: boolean }) => void;
   onJoinDenied?: (message: string) => void;
+  onUserJoined?: (data: { userId: string; nickname: string; socketId: string }) => void;
 }
 
-export function useRoom({ socket, onJoinOk, onJoinDenied }: UseRoomOptions) {
+export function useRoom({ socket, onJoinOk, onJoinDenied, onUserJoined }: UseRoomOptions) {
   const [activeRooms, setActiveRooms] = useState<PublicRoom[]>([]);
   const [roomUsers, setRoomUsers] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +47,10 @@ export function useRoom({ socket, onJoinOk, onJoinDenied }: UseRoomOptions) {
       setError(message);
     });
 
+    socket.on("user_joined", (data: { userId: string; nickname: string; socketId: string }) => {
+      onUserJoined?.(data);
+    });
+
     return () => {
       socket.off("init_data");
       socket.off("rooms_list_update");
@@ -53,8 +58,9 @@ export function useRoom({ socket, onJoinOk, onJoinDenied }: UseRoomOptions) {
       socket.off("join_ok");
       socket.off("join_denied");
       socket.off("room_error");
+      socket.off("user_joined");
     };
-  }, [socket, onJoinOk, onJoinDenied]);
+  }, [socket, onJoinOk, onJoinDenied, onUserJoined]);
 
   const validatePassword = (password: string) => password.length >= MIN_PASSWORD_LENGTH;
 

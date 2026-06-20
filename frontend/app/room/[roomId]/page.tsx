@@ -42,6 +42,29 @@ export default function RoomPage() {
   const [roomKeyReady, setRoomKeyReady] = useState(false);
   const initializedRef = useRef(false);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const preferredQualityRef = useRef<string | null>(null);
+
+  const pickQuality = useCallback((formats: VideoFormat[]) => {
+    if (formats.length === 0) return;
+    // Keep user's manual selection if available in new format list
+    if (preferredQualityRef.current) {
+      const f = formats.find(x => x.id === preferredQualityRef.current);
+      if (f) { setVideoUrl(f.url); setSelectedQuality(f.id); return; }
+    }
+    // Auto-pick best quality (first in array is highest)
+    const best = formats[0];
+    setVideoUrl(best.url);
+    setSelectedQuality(best.id);
+  }, []);
+
+  const handleQualityChange = (formatId: string) => {
+    const f = formats.find(x => x.id === formatId);
+    if (f) {
+      preferredQualityRef.current = formatId;
+      setVideoUrl(f.url);
+      setSelectedQuality(formatId);
+    }
+  };
 
   const loadVideoForHost = useCallback(async (url: string) => {
     try {
@@ -49,14 +72,18 @@ export default function RoomPage() {
       const data = await res.json();
       if (data.formats && data.formats.length > 0) {
         setFormats(data.formats);
-        const best = data.formats[0];
-        setSelectedQuality(best.id);
-        setVideoUrl(best.url);
+        pickQuality(data.formats);
+        return;
+      }
+      const directRes = await fetch(`${API_URL}/api/torrents/extract-url?url=${encodeURIComponent(url)}`);
+      const directData = await directRes.json();
+      if (directData.streamUrl) {
+        setVideoUrl(directData.streamUrl);
       }
     } catch (err) {
       console.error('Ошибка загрузки видео:', err);
     }
-  }, [roomId]);
+  }, [roomId, pickQuality]);
 
   const pollStreamForGuest = useCallback(() => {
     const fetchStream = async () => {
@@ -67,14 +94,18 @@ export default function RoomPage() {
           return;
         }
         const data = await res.json();
-        setVideoUrl(data.url);
-        if (data.formats) setFormats(data.formats);
+        if (data.formats) {
+          setFormats(data.formats);
+          pickQuality(data.formats);
+        } else if (data.url) {
+          setVideoUrl(data.url);
+        }
       } catch (err) {
         pollTimerRef.current = setTimeout(fetchStream, 2000);
       }
     };
     fetchStream();
-  }, [roomId]);
+  }, [roomId, pickQuality]);
 
   const onJoinOk = useCallback(
     (data: { roomId: string; meta: RoomMeta; isHost: boolean }) => {
@@ -99,7 +130,9 @@ export default function RoomPage() {
   // Инициализация E2E ключа для синхронизации
   useEffect(() => {
     if (!joined || !session?.password || !identity) return;
-    initKey(session.password, roomId).then(() => setRoomKeyReady(true));
+    initKey(session.password, roomId)
+      .then(() => setRoomKeyReady(true))
+      .catch(console.error);
   }, [joined, session, roomId, identity, initKey]);
 
   useEffect(() => {
@@ -136,34 +169,17 @@ export default function RoomPage() {
     };
   }, [session, identity, socket, roomId, createRoom, joinRoom]);
 
-  const handleQualityChange = async (formatId: string) => {
-    try {
-      const res = await fetch(`${API_URL}/api/torrents/select-quality`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomId, formatId }),
-      });
-      const data = await res.json();
-      if (data.url) {
-        setVideoUrl(data.url);
-        setSelectedQuality(formatId);
-      }
-    } catch (err) {
-      console.error('Ошибка смены качества:', err);
-    }
-  };
-
   const handleLeave = () => {
     if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     leaveRoom(roomId);
     clearRoomSession(roomId);
-    router.push("/");
+    router.push("/catalog");
   };
 
   if (!identity) {
     return (
       <main className="min-h-screen flex items-center justify-center text-zinc-400">
-        <Button onClick={() => router.push("/")}>Сначала войдите</Button>
+        <Button onClick={() => router.push("/catalog")}>Сначала войдите</Button>
       </main>
     );
   }
@@ -171,7 +187,7 @@ export default function RoomPage() {
   if (!session) {
     return (
       <main className="min-h-screen flex items-center justify-center text-zinc-400">
-        <Button onClick={() => router.push("/")}>Вернуться в каталог</Button>
+        <Button onClick={() => router.push("/catalog")}>Вернуться в каталог</Button>
       </main>
     );
   }
@@ -208,25 +224,6 @@ export default function RoomPage() {
         {joined && (
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             <div className="lg:col-span-3 space-y-4">
-              {isHost && formats.length > 0 && (
-                <div className="flex items-center gap-3 flex-wrap">
-                  <span className="text-xs text-zinc-500">Качество:</span>
-                  {formats.map(f => (
-                    <button
-                      key={f.id}
-                      onClick={() => handleQualityChange(f.id)}
-                      className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
-                        selectedQuality === f.id
-                          ? "bg-[var(--syncro-accent)] text-black"
-                          : "bg-white/5 text-zinc-400 hover:text-zinc-200 border border-white/10"
-                      }`}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-
               <SyncPlayer
                 src={videoUrl}
                 socket={socket}
@@ -235,6 +232,9 @@ export default function RoomPage() {
                 roomKeyReady={roomKeyReady}
                 isHost={isHost}
                 title={meta?.title}
+                qualities={formats}
+                selectedQuality={selectedQuality}
+                onQualityChange={handleQualityChange}
               />
               <Button variant="secondary" onClick={handleLeave}>
                 ← Выйти из комнаты

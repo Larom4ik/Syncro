@@ -1,0 +1,294 @@
+.root {
+  position: relative;
+  min-height: 100svh;
+  background: #050508;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ── canvas ── */
+.canvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* ── ambient orbs ── */
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(80px);
+}
+.orbA {
+  width: 800px;
+  height: 800px;
+  background: radial-gradient(circle, rgba(99, 120, 255, 0.10) 0%, transparent 70%);
+  top: -25%;
+  left: -20%;
+  animation: driftA 24s ease-in-out infinite;
+}
+.orbB {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.08) 0%, transparent 70%);
+  bottom: -20%;
+  right: -15%;
+  animation: driftB 20s ease-in-out infinite;
+}
+.orbC {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.06) 0%, transparent 70%);
+  top: 30%;
+  right: 20%;
+  animation: driftC 28s ease-in-out infinite;
+}
+
+@keyframes driftA {
+  0%, 100% { transform: translate(0, 0); }
+  33%       { transform: translate(40px, -30px); }
+  66%       { transform: translate(-20px, 20px); }
+}
+@keyframes driftB {
+  0%, 100% { transform: translate(0, 0); }
+  40%       { transform: translate(-30px, 20px); }
+  70%       { transform: translate(15px, -25px); }
+}
+@keyframes driftC {
+  0%, 100% { transform: translate(0, 0); }
+  50%       { transform: translate(25px, -20px); }
+}
+
+/* ── content stack ── */
+.content {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2.5rem;
+  text-align: center;
+  padding: 0 1.5rem;
+}
+
+/* ── eyebrow ── */
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  opacity: 0;
+  animation: fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.8s forwards;
+}
+.eyebrowLine {
+  width: 28px;
+  height: 1px;
+  background: rgba(148, 163, 255, 0.3);
+}
+.eyebrowText {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(148, 163, 255, 0.5);
+}
+
+/* ── title ── */
+.titleWrap {
+  perspective: 900px;
+  line-height: 1;
+}
+
+.titleLetter {
+  display: inline-block;
+  font-size: clamp(5rem, 18vw, 12rem);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.04em;
+
+  /* cool multi-stop gradient: white → violet → indigo → sky */
+  background: linear-gradient(
+    135deg,
+    #ffffff 0%,
+    #c4b5fd 22%,
+    #818cf8 44%,
+    #38bdf8 68%,
+    #e0f2fe 100%
+  );
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+
+  opacity: 0;
+  transform: translateY(70px) rotateX(-40deg);
+  filter: blur(6px);
+  animation: letterIn 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards,
+             gradientDrift 6s ease-in-out infinite alternate;
+}
+
+@keyframes letterIn {
+  to {
+    opacity: 1;
+    transform: translateY(0) rotateX(0deg);
+    filter: blur(0px);
+  }
+}
+
+@keyframes gradientDrift {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+/* ── form ── */
+.form {
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  opacity: 0;
+  animation: fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) 1.4s forwards;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  max-width: 360px;
+  opacity: 0;
+  animation: fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) 1.2s forwards;
+}
+
+/* ── buttons ── */
+.btn {
+  position: relative;
+  flex: 1;
+  padding: 13px 24px;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  overflow: hidden;
+  border: none;
+  outline: none;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+.btn:active { transform: scale(0.97); }
+
+.btnPrimary {
+  background: linear-gradient(135deg, #6366f1, #818cf8);
+  color: #fff;
+  box-shadow: 0 0 0 1px rgba(99,102,241,0.4), 0 8px 24px rgba(99,102,241,0.2);
+}
+.btnPrimary:hover {
+  box-shadow: 0 0 0 1px rgba(99,102,241,0.6), 0 12px 32px rgba(99,102,241,0.3);
+}
+.btnPrimary:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.btnGhost {
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.65);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.1);
+}
+.btnGhost:hover {
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.85);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.18);
+}
+
+/* inner gloss */
+.btnGloss {
+  position: absolute;
+  inset: 1px;
+  border-radius: 14px;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.14), transparent);
+  pointer-events: none;
+}
+
+/* ── who-am-i label ── */
+.whoami {
+  font-size: 11px;
+  color: rgba(255,255,255,0.25);
+  opacity: 0;
+  animation: fadeUp 0.5s ease 1.6s forwards;
+}
+.whoamiAccent {
+  color: rgba(148, 163, 255, 0.6);
+}
+
+/* ── cursor ring ── */
+.cursorRing {
+  position: fixed;
+  top: 0; left: 0;
+  width: 36px; height: 36px;
+  margin-left: -18px;
+  margin-top: -18px;
+  border-radius: 50%;
+  border: 1px solid rgba(129, 140, 248, 0.3);
+  pointer-events: none;
+  z-index: 50;
+  transition: transform 0.12s ease, border-color 0.2s ease;
+}
+.cursorDot {
+  position: fixed;
+  top: 0; left: 0;
+  width: 4px; height: 4px;
+  margin-left: -2px;
+  margin-top: -2px;
+  border-radius: 50%;
+  background: #818cf8;
+  pointer-events: none;
+  z-index: 51;
+}
+
+/* ── scroll hint ── */
+.scrollHint {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+  animation: fadeUp 0.6s ease 2s forwards;
+}
+.scrollMouse {
+  width: 20px; height: 30px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  display: flex;
+  justify-content: center;
+  padding-top: 5px;
+  margin: 0 auto;
+}
+.scrollWheel {
+  width: 2px; height: 6px;
+  background: rgba(148,163,255,0.4);
+  border-radius: 1px;
+  animation: scrollBob 2s ease-in-out infinite;
+}
+@keyframes scrollBob {
+  0%, 100% { transform: translateY(0); opacity: 0.4; }
+  50%       { transform: translateY(4px); opacity: 0.8; }
+}
+
+/* ── shared ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .titleLetter, .eyebrow, .form, .actions, .whoami, .scrollHint {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}

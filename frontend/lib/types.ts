@@ -12,6 +12,9 @@ export interface BootstrapPayload {
   hostPeerId?: string;
   tmdbId?: number;
   title?: string;
+  // Playback state for late-joining users
+  playing?: boolean;
+  currentTime?: number;
 }
 
 export interface UserIdentity {
