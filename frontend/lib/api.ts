@@ -28,9 +28,11 @@ export const api = {
 
   genres: () => get<{ id: number; name: string }[]>('/api/catalog/genres'),
 
-  torrents: (title: string, year?: number) => {
+  torrents: (title: string, year?: number, kinopoiskId?: number | null, type?: string) => {
     const q = new URLSearchParams({ title });
     if (year) q.set('year', String(year));
+    if (kinopoiskId) q.set('kinopoiskId', String(kinopoiskId));
+    if (type) q.set('type', type);
     return get<{ results: TorrentOption[]; recommendedId: number }>(
       `/api/torrents/search?${q}`
     );

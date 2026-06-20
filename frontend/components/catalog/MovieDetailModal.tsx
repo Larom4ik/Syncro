@@ -2,24 +2,25 @@
 
 import { useEffect, useState, startTransition } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/shared/Button";
 import { Modal } from "@/components/shared/Modal";
-import { api } from "@/lib/api";
+import { api, generateRoomId } from "@/lib/api";
+import { saveRoomSession } from "@/lib/storage/roomSession";
 import type { MovieDetails, MovieSummary, TorrentOption } from "@/lib/types";
 
 interface MovieDetailModalProps {
   movie: MovieSummary | null;
   onClose: () => void;
-  onWatchSolo: (magnet: string, details: MovieDetails) => void;
   onWatchTogether: (magnet: string, details: MovieDetails) => void;
 }
 
 export function MovieDetailModal({
   movie,
   onClose,
-  onWatchSolo,
   onWatchTogether,
 }: MovieDetailModalProps) {
+  const router = useRouter();
   const [torrents, setTorrents] = useState<TorrentOption[]>([]);
   const [details, setDetails] = useState<MovieDetails | null>(null);
   const [selectedIdx, setSelectedIdx] = useState(0);
@@ -37,10 +38,13 @@ export function MovieDetailModal({
       setSelectedIdx(0);
     });
 
+    // Определяем тип: фильм или сериал
+    const mediaType = movie.kinopoiskId && movie.kinopoiskId > 1000000 ? 'series' : 'film';
+
     // Загружаем детали фильма и торренты параллельно
     Promise.all([
       api.movie(movie.id),
-      api.torrents(movie.title, movie.year).catch(() => ({ results: [], recommendedId: 0 })),
+      api.torrents(movie.title, movie.year, movie.kinopoiskId, mediaType).catch(() => ({ results: [], recommendedId: 0 })),
     ])
       .then(([det, tor]) => {
         setDetails(det);
@@ -59,7 +63,6 @@ export function MovieDetailModal({
   if (!movie) return null;
 
   const selected = torrents[selectedIdx];
-  // Используем загруженные детали, если они есть, иначе fallback на данные из списка
   const movieData = (details || movie) as MovieDetails;
 
   return (
@@ -110,29 +113,18 @@ export function MovieDetailModal({
             <p className="text-xs text-amber-400">{torrentError}</p>
           )}
           {torrents.length > 0 && (
-            <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
+            <div className="space-y-2">
               {torrents.map((t, i) => (
                 <button
                   key={`${t.provider}-${i}`}
                   onClick={() => setSelectedIdx(i)}
-                  className={`w-full text-left p-3 rounded-xl border text-xs transition-all ${
+                  className={`w-full text-left p-3 rounded-xl border text-sm transition-all ${
                     selectedIdx === i
                       ? "border-[var(--syncro-accent)] bg-[var(--syncro-accent-dim)]"
                       : "border-white/10 bg-white/5 hover:border-white/20"
                   }`}
                 >
-                  <div className="flex justify-between gap-2">
-                    <span className="font-medium line-clamp-1 flex-1">{t.title}</span>
-                    {i === selectedIdx && torrents.length > 1 && (
-                      <span className="text-[10px] text-[var(--syncro-accent)] shrink-0">рекомендуем</span>
-                    )}
-                  </div>
-                  <div className="flex gap-3 mt-1 text-zinc-500">
-                    <span>{t.quality}</span>
-                    <span>{t.seeders} сидов</span>
-                    <span>{t.size}</span>
-                    <span className="uppercase">{t.provider}</span>
-                  </div>
+                  <span className="font-medium">{t.title}</span>
                 </button>
               ))}
             </div>
@@ -143,7 +135,22 @@ export function MovieDetailModal({
           <Button
             variant="secondary"
             disabled={!selected || loading}
-            onClick={() => selected && onWatchSolo(selected.magnet, movieData)}
+            onClick={() => {
+              if (!selected) return;
+              // Одиночный просмотр — сразу переходим
+              const roomId = `solo-${generateRoomId()}`;
+              saveRoomSession(roomId, {
+                password: '',
+                magnet: selected.magnet,
+                meta: {
+                  mode: 'solo',
+                  title: movieData.title,
+                  posterPath: movieData.poster,
+                },
+                isHost: true,
+              });
+              router.push(`/room/${roomId}`);
+            }}
           >
             Смотреть одному
           </Button>

@@ -49,30 +49,30 @@ export function CatalogPage() {
   });
 
   const loadCatalog = useCallback(async () => {
-  setLoading(true);
-  setError("");
-  try {
-    const discover = await (searchQuery.trim()
-      ? api.search(searchQuery)
-      : api.discover({
-          genre: selectedGenre || undefined,
-          year: year || undefined,
-          sortBy,
-        }));
+    setLoading(true);
+    setError("");
+    try {
+      const discover = await (searchQuery.trim()
+        ? api.search(searchQuery)
+        : api.discover({
+            genre: selectedGenre || undefined,
+            year: year || undefined,
+            sortBy,
+          }));
 
-    setMovies(discover.results);
+      setMovies(discover.results);
 
-    if (!genres.length && !searchQuery) {
-      const allGenres = discover.results.flatMap((m) => m.genres ?? []);
-      const unique = [...new Set(allGenres)];
-      setGenres(unique.map((g, i) => ({ id: i, name: g })));
+      if (!genres.length && !searchQuery) {
+        const allGenres = discover.results.flatMap((m) => m.genres ?? []);
+        const unique = [...new Set(allGenres)];
+        setGenres(unique.map((g, i) => ({ id: i, name: g })));
+      }
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    setError((err as Error).message);
-  } finally {
-    setLoading(false);
-  }
-}, [searchQuery, selectedGenre, year, sortBy, genres.length]);
+  }, [searchQuery, selectedGenre, year, sortBy, genres.length]);
 
   useEffect(() => {
     if (isLoggedIn) startTransition(() => { loadCatalog(); });
@@ -192,9 +192,6 @@ export function CatalogPage() {
       <MovieDetailModal
         movie={selectedMovie}
         onClose={() => setSelectedMovie(null)}
-        onWatchSolo={(magnet, details) =>
-          setCreateDialog({ open: true, magnet, details, solo: true })
-        }
         onWatchTogether={(magnet, details) =>
           setCreateDialog({ open: true, magnet, details, solo: false })
         }

@@ -64,7 +64,7 @@ export default function StreamPage() {
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-black">Custom Stream</h1>
           <p className="text-sm text-zinc-400">
-            Прямая ссылка или локальный файл через P2P. Sync — только таймкоды, E2E-шифрование.
+            Прямая ссылка, YouTube, VK Video или локальный файл.
           </p>
         </div>
 
@@ -100,8 +100,8 @@ export default function StreamPage() {
             <GlassPanel className="p-6 space-y-4">
               {mode === "url" ? (
                 <Input
-                  label="URL видео (.mp4 / .m3u8)"
-                  placeholder="https://example.com/video.m3u8"
+                  label="URL видео (YouTube, VK, .mp4, .m3u8)"
+                  placeholder="https://www.youtube.com/watch?v=..."
                   value={streamUrl}
                   onChange={(e) => setStreamUrl(e.target.value)}
                 />
@@ -115,7 +115,7 @@ export default function StreamPage() {
                     className="w-full text-sm text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-[var(--syncro-accent)] file:text-black file:font-semibold"
                   />
                   <p className="text-[11px] text-zinc-500">
-                    Файл не загружается на сервер. P2P через PeerJS (публичный relay).
+                    Файл не загружается на сервер. P2P через PeerJS.
                   </p>
                 </label>
               )}
