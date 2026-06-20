@@ -35,26 +35,23 @@
 <tr>
 <td width="50%">
 
-### 🎬 Совместный просмотр
+###Совместный просмотр
 Создавайте приватные комнаты и смотрите кино с друзьями в реальном времени. Play/Pause/Seek синхронизируются мгновенно.
 
-### 🔒 E2E-шифрование
+###E2E-шифрование
 Все события синхронизации шифруются AES-256-GCM на клиенте. Пароль комнаты — ключ. Сервер ничего не знает о том, что вы смотрите.
 
-### 🧲 P2P-шаринг
+###P2P-шаринг
 Делитесь локальными файлами напрямую между участниками через WebRTC (PeerJS). Без загрузки на сервер.
 
 </td>
 <td width="50%">
 
-### 🎞️ Каталог фильмов
+###Каталог фильмов
 Поиск по Кинопоиску и TMDB. Фильтрация по жанрам, годам, рейтингу. Встроенный поиск торрентов и прямых ссылок.
 
-### 🔗 Любой источник
+###Любой источник
 YouTube, VK Video, .mp4, .m3u8 (HLS) — вставьте ссылку и смотрите вместе. `yt-dlp` достанет лучший доступный формат.
-
-### ⚡ Качество под каждого
-Каждый участник выбирает своё качество видео независимо. Speed control, PiP, клавиатурные шорткаты.
 
 </td>
 </tr>
@@ -80,31 +77,36 @@ YouTube, VK Video, .mp4, .m3u8 (HLS) — вставьте ссылку и смо
 
 ## ✦ Архитектура
 
-```
-┌─ Frontend (Next.js 16) ─────────────────────────────────────┐
-│  ┌──────────────┐  ┌──────────────┐  ┌───────────────────┐  │
-│  │  Movie       │  │  Room        │  │  SyncPlayer       │  │
-│  │  Catalog     │──▶│  Manager    │──▶│  (HLS + WebTorr.)│  │
-│  └──────────────┘  └──────┬───────┘  └────────┬──────────┘  │
-│                           │                    │             │
-│  ┌────────────────────────▼────────────────────▼──────────┐  │
-│  │           Crypto Layer (AES-256-GCM + PBKDF2)         │  │
-│  └────────────────────────┬──────────────────────────────┘  │
-│                           │                                  │
-│  ┌────────────────────────▼──────────────────────────────┐  │
-│  │              Socket.IO Client + PeerJS                │  │
-│  └────────────────────────┬──────────────────────────────┘  │
-└───────────────────────────┼──────────────────────────────────┘
-                            │ (encrypted sync events)
-┌─ Backend (Express + Socket.IO) ──┬─────────────────────────┐
-│  ┌────────────────┐  ┌──────────▼────────┐                │
-│  │  REST API      │  │  Socket Relay     │                │
-│  │  (TMDB/KP/yt)  │  │  (sync, signaling)│                │
-│  └────────────────┘  └───────────────────┘                │
-│  ┌────────────────────────────────────────────────────┐   │
-│  │              Room Store (in-memory)                │   │
-│  └────────────────────────────────────────────────────┘   │
-└────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph Frontend ["💻 Frontend (Next.js 16)"]
+        direction TB
+        MC["🎬 Movie Catalog"] --> RM["🔑 Room Manager"]
+        RM --> SP["▶️ SyncPlayer<br>(HLS + WebTorr.)"]
+        
+        RM --> CL["🔒 Crypto Layer<br>(AES-256-GCM + PBKDF2)"]
+        SP --> CL
+        
+        CL --> SC["🔌 Socket.IO Client + PeerJS"]
+    end
+
+    subgraph Backend ["⚙️ Backend (Express + Socket.IO)"]
+        direction TB
+        RA["🌐 REST API<br>(TMDB/KP/yt)"]
+        SR["🔄 Socket Relay<br>(sync, signaling)"]
+        RS[("💾 Room Store<br>(in-memory)")]
+        
+        SR <--> RS
+    end
+
+    SC ====>|⚡ encrypted sync events| SR
+
+    %% Стилизация блоков для красоты
+    style Frontend fill:#1a1b26,stroke:#7aa2f7,stroke-width:2px,color:#fff
+    style Backend fill:#1a1b26,stroke:#f7768e,stroke-width:2px,color:#fff
+    style CL fill:#24283b,stroke:#e0af68,stroke-width:1px
+    style SC fill:#24283b,stroke:#73daca,stroke-width:1px
+    style SR fill:#24283b,stroke:#bb9af7,stroke-width:1px
 ```
 
 <br>
